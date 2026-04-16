@@ -948,7 +948,8 @@ async fn reschedule_booking_to_new_slot() {
     );
 }
 
-/// POST /api/v1/bookings/{id}/exception — marks booking with exception status
+/// POST /api/v1/bookings/{id}/exception — marks booking with exception status.
+/// Exception is only allowed from Confirmed or InProgress; advance to in_progress via SQL.
 #[actix_rt::test]
 #[serial]
 async fn mark_exception_on_booking() {
@@ -966,6 +967,16 @@ async fn mark_exception_on_booking() {
     )
     .await;
     let booking_id = hold_body["data"]["id"].as_str().unwrap().to_string();
+
+    // Advance to in_progress via SQL — state machine: PendingConfirmation → Exception
+    // is invalid; Exception is only reachable from Confirmed or InProgress.
+    let pool = db::create_pool(&config.database_url);
+    let mut conn = pool.get().expect("failed to get conn");
+    diesel::sql_query(format!(
+        "UPDATE booking_orders SET status = 'in_progress' WHERE id = '{booking_id}'"
+    ))
+    .execute(&mut conn)
+    .unwrap();
 
     let (status, body) = authed_post(
         &app,
@@ -998,19 +1009,23 @@ async fn cancel_within_24h_without_reason_code_returns_422() {
     .await;
     let booking_id = hold_body["data"]["id"].as_str().unwrap().to_string();
 
-    // Move the scheduled_date to tomorrow (within 24h) via direct SQL
+    // Force the booking into breach territory:
+    // Set scheduled_date = TODAY so start = today 09:00; cutoff = yesterday 09:00.
+    // Since now > cutoff, the 24h breach window is active.
+    // Also advance status to 'confirmed' — breach rules only apply to bookings that
+    // have moved past the hold stage (PendingConfirmation cancels freely).
     let pool = db::create_pool(&config.database_url);
     let mut conn = pool.get().expect("failed to get conn");
     diesel::sql_query(format!(
         "UPDATE booking_orders \
-         SET hold_expires_at = now() + INTERVAL '1 day', \
-             scheduled_date  = CURRENT_DATE + 1 \
+         SET status = 'confirmed', \
+             scheduled_date = CURRENT_DATE \
          WHERE id = '{booking_id}'"
     ))
     .execute(&mut conn)
     .unwrap();
 
-    // Attempt cancel without reason_code — should be rejected
+    // Attempt cancel without reason_code — should be rejected (breach, reason_code required)
     let (status, body) = authed_post(
         &app,
         &format!("/api/v1/bookings/{booking_id}/cancel"),
@@ -1041,12 +1056,13 @@ async fn cancel_within_24h_with_valid_reason_code_succeeds() {
     .await;
     let booking_id = hold_body["data"]["id"].as_str().unwrap().to_string();
 
-    // Move scheduled_date to tomorrow (within 24h) via direct SQL
+    // Advance to confirmed + set scheduled_date = TODAY to ensure breach territory.
     let pool = db::create_pool(&config.database_url);
     let mut conn = pool.get().expect("failed to get conn");
     diesel::sql_query(format!(
         "UPDATE booking_orders \
-         SET scheduled_date = CURRENT_DATE + 1 \
+         SET status = 'confirmed', \
+             scheduled_date = CURRENT_DATE \
          WHERE id = '{booking_id}'"
     ))
     .execute(&mut conn)
