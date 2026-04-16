@@ -382,6 +382,16 @@ async fn delete_expired_idempotency_keys_allows_fresh_request() {
         .expect("delete_expired failed");
     assert!(pruned >= 1, "expected at least one key to be pruned, got {pruned}");
 
+    // Also clear the legacy idempotency_key column stored directly on the booking
+    // row. The service has a legacy fallback that looks up booking_orders by
+    // idempotency_key; without clearing it the old booking would still be
+    // returned even after canonical-store pruning.
+    diesel::sql_query(format!(
+        "UPDATE booking_orders SET idempotency_key = NULL WHERE id = '{booking_id_first}'"
+    ))
+    .execute(&mut conn)
+    .expect("failed to clear legacy idempotency key on booking");
+
     // 4. Reuse the same key with a new slot — should create a *new* booking
     //    (not a replay of the old one) because the old key was pruned.
     let candidate_id_b = seed_candidate(&app, &token).await;
