@@ -193,14 +193,17 @@ async fn seed_slot(config: &AppConfig) -> (String, String) {
     };
 
     let slot_id = uuid::Uuid::new_v4();
-    let unique_date = format!(
-        "2097-{:02}-{:02}",
-        (slot_id.as_bytes()[0] % 12) + 1,
-        (slot_id.as_bytes()[1] % 28) + 1
-    );
+    let b = slot_id.as_bytes();
+    let year = 2030 + (b[3] as u32 % 30);
+    let month = (b[0] as u32 % 12) + 1;
+    let day = (b[1] as u32 % 28) + 1;
+    let hour = (b[2] as u32 % 14) + 8;
+    let unique_date = format!("{year}-{month:02}-{day:02}");
+    let start_time = format!("{hour:02}:00");
+    let end_time = format!("{:02}:00", hour + 1);
     diesel::sql_query(format!(
         "INSERT INTO booking_slots (id, site_id, slot_date, start_time, end_time, capacity) \
-         VALUES ('{slot_id}', '{site_id}', '{unique_date}', '10:00', '11:00', 5)"
+         VALUES ('{slot_id}', '{site_id}', '{unique_date}', '{start_time}', '{end_time}', 5)"
     ))
     .execute(&mut conn)
     .unwrap();

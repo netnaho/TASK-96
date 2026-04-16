@@ -184,16 +184,20 @@ async fn seed_slot(
         site[0].0
     };
 
-    // Insert a slot with a unique date to avoid conflicts across test runs
+    // Generate a (date, start_time) pair with ~40 320 combinations so serial
+    // tests sharing the same site never hit the uq_slot_site_date_time constraint.
     let slot_id = uuid::Uuid::new_v4();
-    let unique_date = format!(
-        "2099-{:02}-{:02}",
-        (slot_id.as_bytes()[0] % 12) + 1,
-        (slot_id.as_bytes()[1] % 28) + 1
-    );
+    let b = slot_id.as_bytes();
+    let year = 2030 + (b[3] as u32 % 30);          // 2030–2059  (30 options)
+    let month = (b[0] as u32 % 12) + 1;             // 1–12
+    let day = (b[1] as u32 % 28) + 1;               // 1–28
+    let hour = (b[2] as u32 % 14) + 8;              // 08–21      (14 options)
+    let unique_date = format!("{year}-{month:02}-{day:02}");
+    let start_time = format!("{hour:02}:00");
+    let end_time = format!("{:02}:00", hour + 1);
     diesel::sql_query(format!(
         "INSERT INTO booking_slots (id, site_id, slot_date, start_time, end_time, capacity) \
-         VALUES ('{slot_id}', '{site_id}', '{unique_date}', '09:00', '10:00', 2)"
+         VALUES ('{slot_id}', '{site_id}', '{unique_date}', '{start_time}', '{end_time}', 2)"
     ))
     .execute(&mut conn)
     .unwrap();
