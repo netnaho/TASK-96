@@ -1,0 +1,18 @@
+# Development-only overrides.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This enables database seeding with known dev-only passwords so that
+# integration tests and local exploration work out of the box.
+#
+# WARNING: These passwords are PUBLIC and must never be used outside
+# local development.  The seed binary will accept any password via
+# SEED_*_PASSWORD env vars — use random values for shared environments.
+services:
+  app:
+    environment:
+      RUN_SEED: "true"
+      SEED_ADMIN_PASSWORD: "Admin_Pa$$word1!"
+      SEED_CLUB_ADMIN_PASSWORD: "ClubAdm1n!Passw0rd"
+      SEED_MEMBER_PASSWORD: "Member!User1Passw0rd"

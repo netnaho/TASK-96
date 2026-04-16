@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: talentflow
+      POSTGRES_PASSWORD: talentflow_dev
+      POSTGRES_DB: talentflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talentflow"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://talentflow:talentflow_dev@db:5432/talentflow
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8080
+      RUST_LOG: info,talentflow=debug
+      STORAGE_PATH: /app/storage
+      # Development-only key — replace with `openssl rand -base64 32` before deployment
+      ENCRYPTION_KEY: "pMs1UAZsnyLiBTyMI7/X10R6W70DQHVoaC4CJAwEqe0="
+      SESSION_TTL_SECONDS: 28800
+      SESSION_MAX_PER_USER: 5
+      RATE_LIMIT_RPS: 30
+      RATE_LIMIT_BURST: 60
+      LOCKOUT_THRESHOLD: 5
+      LOCKOUT_DURATION_SECONDS: 900
+      SCHEDULER_ENABLED: "true"
+      RUN_MIGRATIONS: "true"
+      # Seeding is off by default. Use docker-compose.dev.yml override for local dev:
+      #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+      RUN_SEED: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app_storage:/app/storage
+
+volumes:
+  pgdata:
+  app_storage:

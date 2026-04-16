@@ -1,0 +1,35 @@
+FROM rust:1.88-bookworm
+
+RUN apt-get update && apt-get install -y libpq-dev && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Cache dependency build — stubs for every target so cargo can parse Cargo.toml.
+COPY Cargo.toml Cargo.lock* ./
+RUN mkdir -p src/bin unit_tests API_tests e2e_tests && \
+    echo 'fn main() {}' > src/bin/server.rs && \
+    echo 'fn main() {}' > src/bin/seed.rs && \
+    echo 'fn main() {}' > src/bin/backfill_compensation.rs && \
+    printf '' > src/lib.rs && \
+    printf '' > unit_tests/mod.rs && \
+    printf '' > API_tests/auth_tests.rs && \
+    printf '' > API_tests/business_tests.rs && \
+    printf '' > API_tests/booking_tests.rs && \
+    printf '' > API_tests/search_reporting_tests.rs && \
+    printf '' > API_tests/scheduler_integration_tests.rs && \
+    printf '' > e2e_tests/http_tests.rs && \
+    cargo build --release --tests 2>/dev/null || true && \
+    rm -rf src unit_tests API_tests e2e_tests && \
+    rm -f target/release/talentflow target/release/seed target/release/backfill_compensation && \
+    rm -f target/release/libtalentflow* && \
+    rm -rf target/release/.fingerprint/talentflow-* && \
+    rm -rf target/release/deps/talentflow-* target/release/deps/libtalentflow-*
+
+# Copy everything including test dirs (no .dockerignore filtering for this file)
+COPY src/ src/
+COPY migrations/ migrations/
+COPY unit_tests/ unit_tests/
+COPY API_tests/ API_tests/
+COPY e2e_tests/ e2e_tests/
+COPY Cargo.toml Cargo.lock* ./
+COPY diesel.toml ./

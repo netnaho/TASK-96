@@ -1,0 +1,2 @@
+ALTER TABLE candidates DROP COLUMN IF EXISTS latitude;
+ALTER TABLE candidates DROP COLUMN IF EXISTS longitude;

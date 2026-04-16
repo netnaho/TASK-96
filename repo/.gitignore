@@ -1,0 +1,27 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Storage (runtime data)
+/storage/
+
+# Docker
+docker-compose.override.yml
+CLAUDE.md
+.claude/

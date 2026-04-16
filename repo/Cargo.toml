@@ -1,0 +1,104 @@
+[package]
+name = "talentflow"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "TalentFlow Offer, Onboarding, and Booking Platform API"
+license = "UNLICENSED"
+
+[[bin]]
+name = "talentflow"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "seed"
+path = "src/bin/seed.rs"
+
+[[bin]]
+name = "backfill_compensation"
+path = "src/bin/backfill_compensation.rs"
+
+[dependencies]
+# Web framework — pinned to 4.9.x; 4.10+ has breaking test API changes
+actix-web = ">=4.9, <4.10"
+actix-rt = "2.10"
+actix-cors = "0.7"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database — pinned to 2.2.x to avoid 2.3 breaking changes
+diesel = { version = ">=2.2, <2.3", features = ["postgres", "r2d2", "chrono", "uuid", "serde_json"] }
+diesel_migrations = ">=2.2, <2.3"
+
+# Configuration
+dotenvy = "0.15"
+
+# Logging / Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7"
+
+# Auth / Crypto
+argon2 = "0.5"
+rand = "0.8"
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4"
+aes-gcm = "0.10"
+base64 = "0.22"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.8"
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Rate limiting — pinned to 0.6.x to avoid 0.7 breaking changes
+governor = ">=0.6, <0.7"
+
+# Scheduled jobs
+tokio-cron-scheduler = "0.10"
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "1"
+
+[[test]]
+name = "unit_tests"
+path = "unit_tests/mod.rs"
+
+[[test]]
+name = "auth_tests"
+path = "API_tests/auth_tests.rs"
+
+[[test]]
+name = "business_tests"
+path = "API_tests/business_tests.rs"
+
+[[test]]
+name = "booking_tests"
+path = "API_tests/booking_tests.rs"
+
+[[test]]
+name = "search_reporting_tests"
+path = "API_tests/search_reporting_tests.rs"
+
+[[test]]
+name = "e2e_tests"
+path = "e2e_tests/http_tests.rs"
+
+[[test]]
+name = "scheduler_integration_tests"
+path = "API_tests/scheduler_integration_tests.rs"
+
+[dev-dependencies]
+actix-rt = "2"
+actix-http = "3"
+reqwest = { version = "0.12", features = ["json"] }
+serial_test = "3"
